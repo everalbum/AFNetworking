@@ -697,17 +697,23 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
 {
     __block NSURLSessionUploadTask *uploadTask = nil;
     dispatch_sync(url_session_manager_creation_queue(), ^{
-        uploadTask = [self.session uploadTaskWithRequest:request fromFile:fileURL];
-    });
-
-    if (!uploadTask && self.attemptsToRecreateUploadTasksForBackgroundSessions && self.session.configuration.identifier) {
-        for (NSUInteger attempts = 0; !uploadTask && attempts < AFMaximumNumberOfAttemptsToRecreateBackgroundSessionUploadTask; attempts++) {
+        if ([[NSFileManager defaultManager] fileExistsAtPath:fileURL.path]) {
             uploadTask = [self.session uploadTaskWithRequest:request fromFile:fileURL];
         }
+    });
+    
+    if (!uploadTask && self.attemptsToRecreateUploadTasksForBackgroundSessions && self.session.configuration.identifier) {
+        if ([[NSFileManager defaultManager] fileExistsAtPath:fileURL.path]) {
+            for (NSUInteger attempts = 0; !uploadTask && attempts < AFMaximumNumberOfAttemptsToRecreateBackgroundSessionUploadTask; attempts++) {
+                uploadTask = [self.session uploadTaskWithRequest:request fromFile:fileURL];
+            }
+        }
     }
-
-    [self addDelegateForUploadTask:uploadTask progress:progress completionHandler:completionHandler];
-
+    
+    if (uploadTask) {
+        [self addDelegateForUploadTask:uploadTask progress:progress completionHandler:completionHandler];
+    }
+    
     return uploadTask;
 }
 
